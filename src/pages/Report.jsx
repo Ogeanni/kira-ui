@@ -8,29 +8,14 @@ import { ActionList } from '../components/ActionList'
 import { FeedbackRow } from '../components/FeedbackRow'
 import { api } from '../lib/api'
 
+// ── Helpers (outside component — pure functions, no hooks) ────────────
 
-useEffect(() => {
-  if (!data) return
-  const openedAt = Date.now()
-  return () => {
-    const seconds = Math.round((Date.now() - openedAt) / 1000)
-    api.recordViewDuration(
-      data.run_id,
-      clientId,
-      seconds,
-      data.faithfulness_score ?? null
-    )
-  }
-}, [data])
-
-// Parse markdown-ish report into structured sections
 function parseReport(text) {
   if (!text) return null
   const sections = {}
   const lines = text.split('\n')
   let current = null
   let buffer = []
-
   for (const line of lines) {
     if (line.startsWith('## ')) {
       if (current) sections[current] = buffer.join('\n').trim()
@@ -44,7 +29,6 @@ function parseReport(text) {
   return sections
 }
 
-// Extract bullet list items from a section
 function extractBullets(text) {
   return text
     .split('\n')
@@ -52,7 +36,6 @@ function extractBullets(text) {
     .map(l => l.trim().replace(/^-\s*/, ''))
 }
 
-// Extract numbered actions from Recommended Actions section
 function extractActions(text) {
   const items = []
   const regex = /\d+\.\s+\*\*(.+?)\*\*:?\s*(.+?)(?=\n\d+\.|\n\s*$|$)/gs
@@ -61,11 +44,10 @@ function extractActions(text) {
     const full = (match[1] + ': ' + match[2]).replace(/\*\*/g, '')
     const impactMatch = full.match(/Expected impact:\s*(.+)/i)
     items.push({
-      text: full.replace(/Expected impact:.+/i, '').trim().replace(/\s+/g, ' '),
+      text:   full.replace(/Expected impact:.+/i, '').trim().replace(/\s+/g, ' '),
       impact: impactMatch ? 'Expected: ' + impactMatch[1].trim() : null,
     })
   }
-  // Fallback: split on numbered lines
   if (items.length === 0) {
     text.split('\n').forEach(line => {
       const m = line.match(/^\d+\.\s+(.+)/)
@@ -82,22 +64,49 @@ const CLIENT_NAMES = {
   lumina:     'Lumina Home Lighting',
 }
 
+// ── Component ─────────────────────────────────────────────────────────
+
 export function Report() {
   const { clientId, runId } = useParams()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [data, setData]     = useState(location.state?.result ?? null)
-  const [loading, setLoading] = useState(!data)
-  const [copied, setCopied]   = useState(false)
+  const location            = useLocation()
+  const navigate            = useNavigate()
 
+  const [data,    setData]    = useState(location.state?.result ?? null)
+  const [loading, setLoading] = useState(!location.state?.result)
+  const [copied,  setCopied]  = useState(false)
+
+  // Fetch report from API if not passed via navigation state
   useEffect(() => {
-    if (!data) {
-      api.getReport(clientId, runId)
-        .then(setData)
-        .catch(console.error)
-        .finally(() => setLoading(false))
-    }
+    if (data) return
+    api.getReport(clientId, runId)
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [clientId, runId, data])
+
+  // Record view duration on unmount — implicit quality signal
+  useEffect(() => {
+    if (!data) return
+    const openedAt = Date.now()
+    return () => {
+      const seconds = Math.round((Date.now() - openedAt) / 1000)
+      api.recordViewDuration(
+        data.run_id,
+        clientId,
+        seconds,
+        data.faithfulness_score ?? null
+      ).catch(console.error)
+    }
+  }, [data, clientId])
+
+  function handleCopy() {
+    const report = data?.final_report || data?.report_draft || ''
+    navigator.clipboard.writeText(report).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+      api.recordCopyEvent(data.run_id, clientId).catch(console.error)
+    })
+  }
 
   if (loading) {
     return (
@@ -137,23 +146,15 @@ export function Report() {
   const compliancePassed = data.compliance_passed
   const anomalyCount     = data.anomalies_detected ?? 0
 
-  function handleCopy() {
-  navigator.clipboard.writeText(report).then(() => {
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
-    api.recordCopyEvent(data.run_id, clientId)
-    })
-  }
-
   const sectionLabel = {
-    fontSize: 'var(--text-xs)',
-    fontWeight: 500,
+    fontSize:      'var(--text-xs)',
+    fontWeight:    500,
     letterSpacing: '0.06em',
-    color: 'var(--text-2)',
+    color:         'var(--text-2)',
     textTransform: 'uppercase',
-    marginBottom: 'var(--space-3)',
+    marginBottom:  'var(--space-3)',
     paddingBottom: 'var(--space-2)',
-    borderBottom: '1px solid var(--border)',
+    borderBottom:  '1px solid var(--border)',
   }
 
   return (
@@ -164,30 +165,33 @@ export function Report() {
         <button
           onClick={() => navigate('/')}
           style={{
-            display: 'block',
-            width: '100%',
-            textAlign: 'left',
-            background: 'none',
-            border: 'none',
-            borderBottom: '1px solid var(--border)',
-            padding: 'var(--space-5) 0',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--text-2)',
-            cursor: 'pointer',
+            display:     'block',
+            width:       '100%',
+            textAlign:   'left',
+            background:  'none',
+            border:      'none',
+            borderBottom:'1px solid var(--border)',
+            padding:     'var(--space-5) 0',
+            fontSize:    'var(--text-sm)',
+            color:       'var(--text-2)',
+            cursor:      'pointer',
+            transition:  'color 0.15s',
           }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-2)'}
         >
           ← Back to clients
         </button>
 
         {/* Status bar */}
         <div style={{
-          padding: 'var(--space-5) 0',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--space-4)',
-          flexWrap: 'wrap',
+          padding:       'var(--space-5) 0',
+          borderBottom:  '1px solid var(--border)',
+          display:       'flex',
+          alignItems:    'center',
+          justifyContent:'space-between',
+          gap:           'var(--space-4)',
+          flexWrap:      'wrap',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', flexWrap: 'wrap' }}>
             <StatusChip
@@ -195,29 +199,37 @@ export function Report() {
               label={compliancePassed ? 'Compliance passed' : 'Compliance failed'}
             />
             {anomalyCount > 0 && (
-              <StatusChip
-                colour="var(--amber)"
-                label={`${anomalyCount} anomaly detected`}
-              />
+              <StatusChip colour="var(--amber)" label={`${anomalyCount} anomaly detected`} />
             )}
             <span style={{
-              fontSize: 'var(--text-sm)',
-              color: 'var(--text-2)',
-              fontFamily: "'DM Mono', monospace",
+              fontSize:         'var(--text-sm)',
+              color:            'var(--text-2)',
+              fontFamily:       "'DM Mono', monospace",
+              fontVariantNumeric:'tabular-nums',
             }}>
               {data.run_id}
             </span>
           </div>
+
           <button
             onClick={handleCopy}
             style={{
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              color: 'var(--text-2)',
-              fontSize: 'var(--text-sm)',
-              padding: '6px 14px',
+              background:   'transparent',
+              border:       '1px solid var(--border)',
+              color:        'var(--text-2)',
+              fontSize:     'var(--text-sm)',
+              padding:      '6px 14px',
               borderRadius: 'var(--radius)',
-              cursor: 'pointer',
+              cursor:       'pointer',
+              transition:   'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--text-2)'
+              e.currentTarget.style.color = 'var(--text-1)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--border)'
+              e.currentTarget.style.color = 'var(--text-2)'
             }}
           >
             {copied ? 'Copied' : 'Copy report'}
@@ -230,10 +242,10 @@ export function Report() {
             {CLIENT_NAMES[clientId] ?? clientId}
           </div>
           <h2 style={{
-            fontSize: 'var(--text-xl)',
-            fontWeight: 600,
+            fontSize:      'var(--text-xl)',
+            fontWeight:    600,
             letterSpacing: '-0.02em',
-            marginBottom: 'var(--space-8)',
+            marginBottom:  'var(--space-8)',
           }}>
             Weekly Performance Report
           </h2>
@@ -242,29 +254,35 @@ export function Report() {
           {sections?.['Executive Summary'] && (
             <div style={{ marginBottom: 'var(--space-8)' }}>
               <div style={sectionLabel}>Executive summary</div>
-              <p style={{ fontSize: 'var(--text-base)', lineHeight: 1.7, color: 'var(--text-1)', maxWidth: '60ch' }}>
+              <p style={{
+                fontSize:   'var(--text-base)',
+                lineHeight: 1.7,
+                color:      'var(--text-1)',
+                maxWidth:   '60ch',
+              }}>
                 {sections['Executive Summary']}
               </p>
             </div>
           )}
 
-          {/* Key metrics — show as cards if parseable, else raw text */}
+          {/* Key metrics */}
           {metrics.length > 0 ? (
             <div style={{ marginBottom: 'var(--space-8)' }}>
               <div style={sectionLabel}>Key metrics</div>
               <div style={{
-                display: 'grid',
+                display:             'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                gap: 'var(--space-4)',
+                gap:                 'var(--space-4)',
               }}>
                 {metrics.slice(0, 6).map((m, i) => {
-                  const parts = m.split(':')
-                  const name  = parts[0]?.trim() ?? m
-                  const rest  = parts.slice(1).join(':').trim()
+                  const parts       = m.split(':')
+                  const name        = parts[0]?.trim() ?? m
+                  const rest        = parts.slice(1).join(':').trim()
                   const changeMatch = rest.match(/\((.+?)\)/)
-                  const value = rest.replace(/\(.*?\)/, '').trim()
-                  const change = changeMatch?.[1]
-                  const changeType = change?.startsWith('+') ? 'pos' : change?.startsWith('-') ? 'neg' : null
+                  const value       = rest.replace(/\(.*?\)/, '').trim()
+                  const change      = changeMatch?.[1]
+                  const changeType  = change?.startsWith('+') ? 'pos'
+                                    : change?.startsWith('-') ? 'neg' : null
                   return (
                     <MetricCard
                       key={i}
@@ -287,7 +305,8 @@ export function Report() {
           )}
 
           {/* Anomalies */}
-          {sections?.['Anomalies'] && sections['Anomalies'] !== 'No anomalies detected this period.' && (
+          {sections?.['Anomalies'] &&
+            sections['Anomalies'] !== 'No anomalies detected this period.' && (
             <div style={{ marginBottom: 'var(--space-8)' }}>
               <div style={sectionLabel}>Anomalies</div>
               <AnomalyBlock
@@ -314,8 +333,20 @@ export function Report() {
 
 function StatusChip({ colour, label }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)' }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: colour, display: 'inline-block' }} />
+    <span style={{
+      display:    'inline-flex',
+      alignItems: 'center',
+      gap:        6,
+      fontSize:   'var(--text-sm)',
+    }}>
+      <span style={{
+        width:        6,
+        height:       6,
+        borderRadius: '50%',
+        background:   colour,
+        display:      'inline-block',
+        flexShrink:   0,
+      }} />
       <span style={{ fontWeight: 500, color: colour }}>{label}</span>
     </span>
   )
