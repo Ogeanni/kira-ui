@@ -41,9 +41,9 @@ const INITIAL_STEPS = [
 ]
 
 export function Workspace() {
-  const navigate    = useNavigate()
-  const lastRunRef  = useRef({})           // tracks last run per client for re-run detection
-  const elapsedRef  = useRef(null)         // interval ref for elapsed timer
+  const navigate   = useNavigate()
+  const lastRunRef = useRef({})    // tracks last run per client for re-run detection
+  const elapsedRef = useRef(null)  // interval ref for elapsed timer
 
   const [running, setRunning] = useState(null)
   const [steps,   setSteps]   = useState(INITIAL_STEPS)
@@ -140,21 +140,29 @@ export function Workspace() {
           opacity: 0,
           animation: 'fadeUp 0.4s ease forwards 0.1s',
         }}>
-          <style>{`@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }`}</style>
+          <style>{`
+            @keyframes fadeUp {
+              from { opacity: 0; transform: translateY(8px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
           <h1 style={{
-            fontSize: 'var(--text-2xl)',
-            fontWeight: 600,
+            fontSize:      'var(--text-2xl)',
+            fontWeight:    600,
             letterSpacing: '-0.02em',
-            marginBottom: 'var(--space-1)',
+            marginBottom:  'var(--space-1)',
           }}>
             Weekly Reports
           </h1>
           <p style={{ fontSize: 'var(--text-base)', color: 'var(--text-2)' }}>
-            4 clients · Monday reporting cycle
+            {CLIENTS.length} clients · Monday reporting cycle
           </p>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border)' }}>
+        <div style={{
+          borderTop:    '1px solid var(--border)',
+          marginBottom: 'var(--space-10)',
+        }}>
           {CLIENTS.map((client, index) => (
             <ClientRow
               key={client.id}
@@ -164,38 +172,6 @@ export function Workspace() {
               index={index}
             />
           ))}
-        </div>
-
-        <div style={{
-          padding: 'var(--space-8) 0 var(--space-10)',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          opacity: 0,
-          animation: 'fadeUp 0.35s ease forwards 0.7s',
-        }}>
-          <button
-            disabled={!!running}
-            onClick={() => {
-              // Run all clients sequentially
-              // For now runs first client — full sequential run is a future enhancement
-              if (!running) runReport(CLIENTS[0])
-            }}
-            style={{
-              background:   running ? 'var(--surface)' : 'var(--text-1)',
-              border:       'none',
-              color:        running ? 'var(--text-2)' : 'var(--ink)',
-              fontSize:     'var(--text-base)',
-              fontWeight:   600,
-              padding:      '10px 20px',
-              borderRadius: 'var(--radius)',
-              cursor:       running ? 'not-allowed' : 'pointer',
-              transition:   'opacity 0.15s',
-            }}
-            onMouseEnter={e => { if (!running) e.currentTarget.style.opacity = '0.88' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-          >
-            {running ? 'Running...' : 'Generate all reports'}
-          </button>
         </div>
       </Shell>
 
