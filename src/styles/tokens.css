@@ -1,0 +1,70 @@
+/* KIRA Design Tokens
+   Single source of truth for colour, type, and spacing.
+   All components import this via main.jsx global import.
+*/
+
+:root {
+  /* Colour */
+  --ink:        #0C0C0C;
+  --surface:    #161616;
+  --border:     #272727;
+  --text-1:     #EFEFEF;
+  --text-2:     #737373;
+  --text-3:     #3D3D3D;
+  --amber:      #D97B2A;
+  --green:      #3DAA6E;
+  --red:        #C94040;
+  --amber-bg:   rgba(217, 123, 42, 0.08);
+  --green-bg:   rgba(61, 170, 110, 0.08);
+  --red-bg:     rgba(201, 64, 64, 0.08);
+  --amber-border: rgba(217, 123, 42, 0.25);
+
+  /* Type scale */
+  --text-xs:    11px;
+  --text-sm:    13px;
+  --text-base:  14px;
+  --text-md:    15px;
+  --text-lg:    18px;
+  --text-xl:    22px;
+  --text-2xl:   24px;
+
+  /* Spacing */
+  --space-1:    4px;
+  --space-2:    8px;
+  --space-3:    12px;
+  --space-4:    16px;
+  --space-5:    20px;
+  --space-6:    24px;
+  --space-8:    32px;
+  --space-10:   40px;
+
+  /* Layout */
+  --max-width:  860px;
+  --radius:     4px;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { font-size: 14px; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--ink);
+  color: var(--text-1);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
