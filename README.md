@@ -1,16 +1,24 @@
-# React + Vite
+# KIRA UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite frontend for KIRA — Knowledge Intelligence & Reporting Agent.
 
-Currently, two official plugins are available:
+**Live:** https://kira-ui-tau.vercel.app  
+**API:** https://kira-api-1.onrender.com/docs
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+Vite + React 19, React Router 7, DM Sans + DM Mono, no UI library.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Local dev
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Calls `http://localhost:8000` by default (`.env.local`).
+Set `VITE_API_URL` in `.env` for production API.
+
+## Deploy
+
+Deployed to Vercel. Pushes to `main` auto-deploy.
